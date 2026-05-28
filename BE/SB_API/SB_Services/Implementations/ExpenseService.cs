@@ -79,6 +79,7 @@ namespace SB_Services.Implementations
                 TotalAmount = request.TotalAmount,
                 SplitMethod = request.SplitMethod,
                 ImageUrl = request.ImageUrl,
+                Category = request.Category ?? "Other",
                 CreatedById = creatorUserId
             };
 
@@ -247,6 +248,7 @@ namespace SB_Services.Implementations
                 TotalAmount = expense.TotalAmount,
                 SplitMethod = expense.SplitMethod,
                 ImageUrl = expense.ImageUrl,
+                Category = expense.Category ?? "Other",
                 CreatedById = expense.CreatedById,
                 CreatedAt = expense.CreatedAt,
                 Payers = expense.Payers.Select(p => new ExpensePayerDto

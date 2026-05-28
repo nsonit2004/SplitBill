@@ -39,10 +39,13 @@ namespace SB_Services.Implementations
 
             try
             {
+                var uniquePublicId = Guid.NewGuid().ToString("N");
                 var uploadParams = new ImageUploadParams
                 {
-                    File = new FileDescription(Guid.NewGuid().ToString("N"), base64Image),
-                    Folder = folderName
+                    File = new FileDescription(uniquePublicId, base64Image),
+                    Folder = folderName,
+                    PublicId = uniquePublicId,
+                    Overwrite = false
                 };
 
                 var uploadResult = await _cloudinary.UploadAsync(uploadParams);
@@ -73,10 +76,17 @@ namespace SB_Services.Implementations
 
             try
             {
+                // Important: Many clients upload files with the same name (e.g. "image.jpg").
+                // If Cloudinary derives public_id from the filename, uploads can overwrite each other.
+                // Generate a unique public_id to ensure each receipt keeps its own image.
+                var uniquePublicId = Guid.NewGuid().ToString("N");
+
                 var uploadParams = new ImageUploadParams
                 {
                     File = new FileDescription(fileName, fileStream),
-                    Folder = folderName
+                    Folder = folderName,
+                    PublicId = uniquePublicId,
+                    Overwrite = false
                 };
 
                 var uploadResult = await _cloudinary.UploadAsync(uploadParams);

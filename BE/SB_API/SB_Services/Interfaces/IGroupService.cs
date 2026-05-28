@@ -17,5 +17,6 @@ namespace SB_Services.Interfaces
         Task<GroupInviteResponseDto> RevokeInviteAsync(string groupId, string inviteToken, string requesterUserId);
         Task<GroupDetailResponseDto> AcceptInviteAsync(string inviteToken, string userId);
         Task RemoveMemberAsync(string groupId, string memberId, string requesterUserId);
+        Task<GroupAnalyticsDto> GetGroupAnalyticsAsync(string groupId, string requesterUserId);
     }
 }

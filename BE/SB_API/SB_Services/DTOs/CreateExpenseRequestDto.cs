@@ -11,6 +11,9 @@ namespace SB_Services.DTOs
         public string SplitMethod { get; set; } = "Equally";
         
         public string? ImageUrl { get; set; }
+        
+        // Category: "Food" | "Transport" | "Accommodation" | "Entertainment" | "Shopping" | "Other"
+        public string Category { get; set; } = "Other";
 
         public List<PayerInputDto> Payers { get; set; } = new List<PayerInputDto>();
         public List<SliceInputDto> Slices { get; set; } = new List<SliceInputDto>();
