@@ -1,0 +1,45 @@
+# === Backend (.NET) ===
+# Build outputs
+**/bin/
+**/obj/
+**/[Oo]bj/
+**/[Bb]in/
+
+# Visual Studio / VS Code
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+.vscode/
+
+# User Secrets / App Settings
+# appsettings.json should be committed as a template, but sensitive production keys should be loaded via Env Vars
+# appsettings.Development.json can contain local developer settings
+# appsettings.Production.json is ignored as it contains real production keys
+**/appsettings.Production.json
+
+# === Frontend (React / Vite) ===
+# Dependency directories
+**/node_modules/
+
+# Production build outputs
+**/dist/
+**/build/
+
+# Local env files which contain sensitive tokens (Cloudinary keys, etc.)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# === System Files ===
+.DS_Store
+Thumbs.db
+log.txt
+
+# === Project Specs & Management (Excluded from Git) ===
+docs/
+plans/
+.brain/
