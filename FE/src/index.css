@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* Tự định nghĩa thêm style Glassmorphism chung cho dự án */
 .glass-panel {

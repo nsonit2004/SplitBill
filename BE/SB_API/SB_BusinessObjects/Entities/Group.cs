@@ -17,5 +17,6 @@ namespace SB_BusinessObjects.Entities
         public virtual ICollection<GroupMember> Members { get; set; } = new List<GroupMember>();
         public virtual ICollection<Expense> Expenses { get; set; } = new List<Expense>();
         public virtual ICollection<SettleTransaction> SettleTransactions { get; set; } = new List<SettleTransaction>();
+        public virtual ICollection<GroupInvite> GroupInvites { get; set; } = new List<GroupInvite>();
     }
 }

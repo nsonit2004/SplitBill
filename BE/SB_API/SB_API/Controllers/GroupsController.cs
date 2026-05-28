@@ -60,7 +60,8 @@ namespace SB_API.Controllers
         {
             try
             {
-                var result = await _groupService.GetGroupDetailAsync(groupId);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                var result = await _groupService.GetGroupDetailAsync(groupId, userId);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
@@ -78,8 +79,15 @@ namespace SB_API.Controllers
         {
             try
             {
-                var result = await _groupService.AddVirtualMemberAsync(groupId, nickname);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _groupService.AddVirtualMemberAsync(groupId, nickname, userId);
                 return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -88,12 +96,23 @@ namespace SB_API.Controllers
         }
 
         [HttpPost("{groupId}/members/{memberId}/link")]
-        public async Task<IActionResult> LinkMemberAccount(string groupId, string memberId, [FromBody] string userId)
+        public async Task<IActionResult> LinkMemberAccount(string groupId, string memberId, [FromQuery] string userEmail)
         {
             try
             {
-                var result = await _groupService.LinkMemberAccountAsync(groupId, memberId, userId);
+                var requesterUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(requesterUserId)) return Unauthorized();
+
+                var result = await _groupService.LinkMemberAccountByEmailAsync(groupId, memberId, userEmail, requesterUserId);
                 return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -106,12 +125,131 @@ namespace SB_API.Controllers
         {
             try
             {
-                await _groupService.RemoveMemberAsync(groupId, memberId);
+                var requesterUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(requesterUserId)) return Unauthorized();
+
+                await _groupService.RemoveMemberAsync(groupId, memberId, requesterUserId);
                 return NoContent();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
             }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{groupId}/invites")]
+        public async Task<IActionResult> CreateInvite(string groupId, [FromBody] CreateGroupInviteRequestDto? request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _groupService.CreateInviteAsync(groupId, userId, request);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("{groupId}/invites")]
+        public async Task<IActionResult> GetInvites(string groupId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _groupService.GetInvitesAsync(groupId, userId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{groupId}/invites/{inviteToken}/revoke")]
+        public async Task<IActionResult> RevokeInvite(string groupId, string inviteToken)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _groupService.RevokeInviteAsync(groupId, inviteToken, userId);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("invites/{inviteToken}/accept")]
+        public async Task<IActionResult> AcceptInvite(string inviteToken)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _groupService.AcceptInviteAsync(inviteToken, userId);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
             }
         }
     }

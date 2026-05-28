@@ -7,10 +7,15 @@ namespace SB_Services.Interfaces
     public interface IGroupService
     {
         Task<GroupDetailResponseDto> CreateGroupAsync(CreateGroupRequestDto request, string creatorUserId);
-        Task<GroupDetailResponseDto> GetGroupDetailAsync(string groupId);
+        Task<GroupDetailResponseDto> GetGroupDetailAsync(string groupId, string? currentUserId = null);
         Task<IEnumerable<GroupDetailResponseDto>> GetUserGroupsAsync(string userId);
-        Task<GroupMemberDto> AddVirtualMemberAsync(string groupId, string nickname);
+        Task<GroupMemberDto> AddVirtualMemberAsync(string groupId, string nickname, string requesterUserId);
         Task<GroupMemberDto> LinkMemberAccountAsync(string groupId, string memberId, string userId);
-        Task RemoveMemberAsync(string groupId, string memberId);
+        Task<GroupMemberDto> LinkMemberAccountByEmailAsync(string groupId, string memberId, string email, string requesterUserId);
+        Task<GroupInviteResponseDto> CreateInviteAsync(string groupId, string requesterUserId, CreateGroupInviteRequestDto? request = null);
+        Task<IEnumerable<GroupInviteResponseDto>> GetInvitesAsync(string groupId, string requesterUserId);
+        Task<GroupInviteResponseDto> RevokeInviteAsync(string groupId, string inviteToken, string requesterUserId);
+        Task<GroupDetailResponseDto> AcceptInviteAsync(string inviteToken, string userId);
+        Task RemoveMemberAsync(string groupId, string memberId, string requesterUserId);
     }
 }

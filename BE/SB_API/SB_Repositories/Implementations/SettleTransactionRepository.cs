@@ -25,6 +25,60 @@ namespace SB_Repositories.Implementations
                 .FirstOrDefaultAsync(t => t.Id == id);
         }
 
+        public async Task<SettleTransaction?> GetByTransferReferenceAsync(string transferReference)
+        {
+            return await _context.SettleTransactions
+                .Include(t => t.Debtor)
+                .Include(t => t.Creditor)
+                .FirstOrDefaultAsync(t => t.TransferReference == transferReference);
+        }
+
+        public async Task<SettleTransaction?> GetLatestPendingBySignatureAsync(
+            string groupId,
+            string debtorId,
+            string creditorId,
+            decimal amount,
+            string paymentMethod)
+        {
+            return await _context.SettleTransactions
+                .Where(t =>
+                    t.GroupId == groupId &&
+                    t.DebtorId == debtorId &&
+                    t.CreditorId == creditorId &&
+                    t.Amount == amount &&
+                    t.PaymentMethod == paymentMethod &&
+                    t.PaymentStatus == "Pending")
+                .OrderByDescending(t => t.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<IEnumerable<SettleTransaction>> GetPendingBySignatureAsync(
+            string groupId,
+            string debtorId,
+            string creditorId,
+            decimal amount,
+            string paymentMethod,
+            string? excludeTransactionId = null)
+        {
+            var query = _context.SettleTransactions
+                .Where(t =>
+                    t.GroupId == groupId &&
+                    t.DebtorId == debtorId &&
+                    t.CreditorId == creditorId &&
+                    t.Amount == amount &&
+                    t.PaymentMethod == paymentMethod &&
+                    t.PaymentStatus == "Pending");
+
+            if (!string.IsNullOrWhiteSpace(excludeTransactionId))
+            {
+                query = query.Where(t => t.Id != excludeTransactionId);
+            }
+
+            return await query
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+        }
+
         public async Task<IEnumerable<SettleTransaction>> GetTransactionsByGroupIdAsync(string groupId)
         {
             return await _context.SettleTransactions

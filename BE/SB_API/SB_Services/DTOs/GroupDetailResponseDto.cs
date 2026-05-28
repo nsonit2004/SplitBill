@@ -12,5 +12,8 @@ namespace SB_Services.DTOs
         public DateTime CreatedAt { get; set; }
 
         public List<GroupMemberDto> Members { get; set; } = new List<GroupMemberDto>();
+
+        public decimal TotalSpent { get; set; }
+        public decimal UserNetBalance { get; set; }
     }
 }

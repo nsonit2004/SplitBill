@@ -81,7 +81,10 @@ namespace SB_API.Controllers
                     avatarUrl = user.AvatarUrl,
                     bankCode = user.BankCode,
                     bankAccountNo = user.BankAccountNo,
-                    bankAccountName = user.BankAccountName
+                    bankAccountName = user.BankAccountName,
+                    bankAccountVerified = user.BankAccountVerified,
+                    bankAccountVerifiedAt = user.BankAccountVerifiedAt,
+                    bankVerificationProvider = user.BankVerificationProvider
                 });
             }
             catch (Exception)

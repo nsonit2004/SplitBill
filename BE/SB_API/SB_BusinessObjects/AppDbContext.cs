@@ -17,6 +17,7 @@ namespace SB_BusinessObjects
         public DbSet<ExpenseSlice> ExpenseSlices { get; set; } = null!;
         public DbSet<SettleTransaction> SettleTransactions { get; set; } = null!;
         public DbSet<Notification> Notifications { get; set; } = null!;
+        public DbSet<GroupInvite> GroupInvites { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -33,6 +34,7 @@ namespace SB_BusinessObjects
                 entity.Property(e => e.BankCode).HasMaxLength(20);
                 entity.Property(e => e.BankAccountNo).HasMaxLength(50);
                 entity.Property(e => e.BankAccountName).HasMaxLength(150);
+                entity.Property(e => e.BankVerificationProvider).HasMaxLength(50);
             });
 
             // 2. Cấu hình bảng Groups
@@ -136,6 +138,8 @@ namespace SB_BusinessObjects
                 entity.Property(e => e.Amount).HasPrecision(18, 2);
                 entity.Property(e => e.PaymentMethod).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.PaymentStatus).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.TransferReference).HasMaxLength(50);
+                entity.HasIndex(e => e.TransferReference).IsUnique();
 
                 // Quan hệ Transaction - Group (Cascade delete)
                 entity.HasOne(t => t.Group)
@@ -167,6 +171,27 @@ namespace SB_BusinessObjects
                 entity.HasOne(n => n.User)
                     .WithMany()
                     .HasForeignKey(n => n.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // 9. Cấu hình bảng GroupInvites
+            modelBuilder.Entity<GroupInvite>(entity =>
+            {
+                entity.ToTable("GroupInvites");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Token).IsRequired().HasMaxLength(128);
+                entity.HasIndex(e => e.Token).IsUnique();
+                entity.Property(e => e.MaxUses).IsRequired();
+                entity.Property(e => e.UsedCount).IsRequired();
+
+                entity.HasOne(i => i.Group)
+                    .WithMany(g => g.GroupInvites)
+                    .HasForeignKey(i => i.GroupId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(i => i.CreatedByUser)
+                    .WithMany(u => u.CreatedGroupInvites)
+                    .HasForeignKey(i => i.CreatedByUserId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
         }

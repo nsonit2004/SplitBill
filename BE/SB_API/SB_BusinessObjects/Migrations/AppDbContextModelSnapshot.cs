@@ -128,6 +128,51 @@ namespace SB_BusinessObjects.Migrations
                     b.ToTable("Groups", (string)null);
                 });
 
+            modelBuilder.Entity("SB_BusinessObjects.Entities.GroupInvite", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("GroupId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("MaxUses")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<int>("UsedCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("GroupId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("GroupInvites", (string)null);
+                });
+
             modelBuilder.Entity("SB_BusinessObjects.Entities.GroupMember", b =>
                 {
                     b.Property<string>("Id")
@@ -196,6 +241,9 @@ namespace SB_BusinessObjects.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<DateTime?>("BankVerifiedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -224,6 +272,10 @@ namespace SB_BusinessObjects.Migrations
                     b.Property<string>("ProofImageUrl")
                         .HasColumnType("longtext");
 
+                    b.Property<string>("TransferReference")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -234,6 +286,9 @@ namespace SB_BusinessObjects.Migrations
                     b.HasIndex("DebtorId");
 
                     b.HasIndex("GroupId");
+
+                    b.HasIndex("TransferReference")
+                        .IsUnique();
 
                     b.ToTable("SettleTransactions", (string)null);
                 });
@@ -254,9 +309,19 @@ namespace SB_BusinessObjects.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
 
+                    b.Property<bool>("BankAccountVerified")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("BankAccountVerifiedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("BankCode")
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)");
+
+                    b.Property<string>("BankVerificationProvider")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
@@ -347,6 +412,25 @@ namespace SB_BusinessObjects.Migrations
                     b.Navigation("CreatedBy");
                 });
 
+            modelBuilder.Entity("SB_BusinessObjects.Entities.GroupInvite", b =>
+                {
+                    b.HasOne("SB_BusinessObjects.Entities.User", "CreatedByUser")
+                        .WithMany("CreatedGroupInvites")
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SB_BusinessObjects.Entities.Group", "Group")
+                        .WithMany("GroupInvites")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Group");
+                });
+
             modelBuilder.Entity("SB_BusinessObjects.Entities.GroupMember", b =>
                 {
                     b.HasOne("SB_BusinessObjects.Entities.Group", "Group")
@@ -414,6 +498,8 @@ namespace SB_BusinessObjects.Migrations
                 {
                     b.Navigation("Expenses");
 
+                    b.Navigation("GroupInvites");
+
                     b.Navigation("Members");
 
                     b.Navigation("SettleTransactions");
@@ -432,6 +518,8 @@ namespace SB_BusinessObjects.Migrations
 
             modelBuilder.Entity("SB_BusinessObjects.Entities.User", b =>
                 {
+                    b.Navigation("CreatedGroupInvites");
+
                     b.Navigation("CreatedGroups");
 
                     b.Navigation("GroupMemberships");

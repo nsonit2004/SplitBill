@@ -11,6 +11,7 @@ namespace SB_Services.Implementations
     public class CloudinaryService : ICloudinaryService
     {
         private readonly Cloudinary? _cloudinary;
+        private readonly bool _isConfigured;
 
         public CloudinaryService(IConfiguration configuration)
         {
@@ -18,43 +19,56 @@ namespace SB_Services.Implementations
             var apiKey = configuration["Cloudinary:ApiKey"];
             var apiSecret = configuration["Cloudinary:ApiSecret"];
 
-            if (!string.IsNullOrEmpty(cloudName) && !string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(apiSecret))
+            _isConfigured = !string.IsNullOrWhiteSpace(cloudName)
+                && !string.IsNullOrWhiteSpace(apiKey)
+                && !string.IsNullOrWhiteSpace(apiSecret);
+
+            if (_isConfigured)
             {
                 var account = new Account(cloudName, apiKey, apiSecret);
                 _cloudinary = new Cloudinary(account);
             }
         }
 
-        public async Task<string> UploadImageAsync(string base64Image, string folderName)
+        public async Task<(string? ImageUrl, string? ErrorMessage)> UploadImageAsync(string base64Image, string folderName)
         {
-            if (_cloudinary == null)
+            if (!_isConfigured || _cloudinary == null)
             {
-                // Fallback giả lập khi chạy môi trường dev không cấu hình Cloudinary
-                return "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg";
+                return ("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=500", null);
             }
 
             try
             {
                 var uploadParams = new ImageUploadParams
                 {
-                    File = new FileDescription(Guid.NewGuid().ToString(), base64Image),
+                    File = new FileDescription(Guid.NewGuid().ToString("N"), base64Image),
                     Folder = folderName
                 };
 
                 var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-                return uploadResult.SecureUrl?.ToString() ?? string.Empty;
+                if (uploadResult.Error != null)
+                {
+                    return (null, $"Upload Cloudinary thất bại: {uploadResult.Error.Message}");
+                }
+
+                if (uploadResult.SecureUrl == null)
+                {
+                    return (null, "Cloudinary không trả về URL ảnh.");
+                }
+
+                return (uploadResult.SecureUrl.ToString(), null);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg";
+                return (null, $"Lỗi upload ảnh: {ex.Message}");
             }
         }
 
-        public async Task<string> UploadImageStreamAsync(Stream fileStream, string fileName, string folderName)
+        public async Task<(string? ImageUrl, string? ErrorMessage)> UploadImageStreamAsync(Stream fileStream, string fileName, string folderName)
         {
-            if (_cloudinary == null)
+            if (!_isConfigured || _cloudinary == null)
             {
-                return "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg";
+                return ("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?q=80&w=500", null);
             }
 
             try
@@ -66,11 +80,21 @@ namespace SB_Services.Implementations
                 };
 
                 var uploadResult = await _cloudinary.UploadAsync(uploadParams);
-                return uploadResult.SecureUrl?.ToString() ?? string.Empty;
+                if (uploadResult.Error != null)
+                {
+                    return (null, $"Upload Cloudinary thất bại: {uploadResult.Error.Message}");
+                }
+
+                if (uploadResult.SecureUrl == null)
+                {
+                    return (null, "Cloudinary không trả về URL ảnh.");
+                }
+
+                return (uploadResult.SecureUrl.ToString(), null);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg";
+                return (null, $"Lỗi upload ảnh: {ex.Message}");
             }
         }
     }

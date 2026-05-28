@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,12 +26,19 @@ namespace SB_API.Controllers
         {
             try
             {
-                var result = await _settlementService.GetGroupBalancesAsync(groupId);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _settlementService.GetGroupBalancesAsync(groupId, userId);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -43,12 +51,19 @@ namespace SB_API.Controllers
         {
             try
             {
-                var result = await _settlementService.GetGroupSimplifiedDebtsAsync(groupId);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _settlementService.GetGroupSimplifiedDebtsAsync(groupId, userId);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -61,12 +76,19 @@ namespace SB_API.Controllers
         {
             try
             {
-                var result = await _settlementService.CreateSettleTransactionAsync(groupId, request);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _settlementService.CreateSettleTransactionAsync(groupId, request, userId);
                 return Ok(result);
             }
             catch (ArgumentException ex)
             {
                 return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -83,8 +105,44 @@ namespace SB_API.Controllers
         {
             try
             {
-                var result = await _settlementService.CompleteSettleTransactionAsync(transactionId);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _settlementService.CompleteSettleTransactionAsync(transactionId, userId);
                 return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("transactions/{transactionId}/cancel")]
+        public async Task<IActionResult> CancelSettleTransaction(string transactionId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _settlementService.CancelSettleTransactionAsync(transactionId, userId);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -101,8 +159,15 @@ namespace SB_API.Controllers
         {
             try
             {
-                var result = await _settlementService.UploadProofImageAsync(transactionId, proofImageUrl);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _settlementService.UploadProofImageAsync(transactionId, proofImageUrl, userId);
                 return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -119,12 +184,48 @@ namespace SB_API.Controllers
         {
             try
             {
-                var result = await _settlementService.GetGroupTransactionsHistoryAsync(groupId);
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _settlementService.GetGroupTransactionsHistoryAsync(groupId, userId);
                 return Ok(result);
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("group/{groupId}/nudge")]
+        public async Task<IActionResult> NudgeDebtor(string groupId, [FromBody] NudgeRequestDto request)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                await _settlementService.NudgeDebtorAsync(groupId, request.DebtorId, request.CreditorId, request.Amount, userId);
+                return Ok(new { message = "Nhắc nợ thành công." });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
             }
             catch (Exception ex)
             {

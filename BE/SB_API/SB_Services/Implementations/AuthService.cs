@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
+using System.Linq;
 using System.Security.Claims;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -14,17 +17,55 @@ namespace SB_Services.Implementations
 {
     public class AuthService : IAuthService
     {
+        private static readonly HashSet<string> SupportedBankCodes = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "VCB", "TCB", "MB", "BIDV", "CTG", "ACB", "VPB", "TPB", "STB", "VIB"
+        };
+
         private readonly IUserRepository _userRepository;
         private readonly IConfiguration _configuration;
+        private readonly IBankAccountVerificationService _bankAccountVerificationService;
 
-        public AuthService(IUserRepository userRepository, IConfiguration configuration)
+        public AuthService(
+            IUserRepository userRepository,
+            IConfiguration configuration,
+            IBankAccountVerificationService bankAccountVerificationService)
         {
             _userRepository = userRepository;
             _configuration = configuration;
+            _bankAccountVerificationService = bankAccountVerificationService;
         }
 
         public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto request)
         {
+            var normalizedEmail = (request.Email ?? string.Empty).Trim().ToLower();
+            if (string.IsNullOrWhiteSpace(normalizedEmail))
+            {
+                throw new ArgumentException("Email không hợp lệ.");
+            }
+
+            request.Email = normalizedEmail;
+            request.DisplayName = (request.DisplayName ?? string.Empty).Trim();
+            request.BankCode = NormalizeNullable(request.BankCode)?.ToUpper();
+            request.BankAccountNo = NormalizeNullable(request.BankAccountNo);
+            request.BankAccountName = NormalizeNullable(request.BankAccountName);
+
+            ValidateBankInfo(request);
+
+            BankAccountVerificationResultDto? verificationResult = null;
+            if (!string.IsNullOrWhiteSpace(request.BankCode))
+            {
+                verificationResult = await _bankAccountVerificationService.VerifyAsync(
+                    request.BankCode!,
+                    request.BankAccountNo!,
+                    request.BankAccountName!);
+
+                if (!verificationResult.IsVerified)
+                {
+                    throw new ArgumentException(verificationResult.Message ?? "Không xác thực được chủ tài khoản ngân hàng.");
+                }
+            }
+
             // Kiểm tra email trùng lặp
             if (await _userRepository.ExistsByEmailAsync(request.Email))
             {
@@ -41,7 +82,10 @@ namespace SB_Services.Implementations
                 DisplayName = request.DisplayName,
                 BankCode = request.BankCode,
                 BankAccountNo = request.BankAccountNo,
-                BankAccountName = request.BankAccountName
+                BankAccountName = request.BankAccountName,
+                BankAccountVerified = verificationResult?.IsVerified ?? false,
+                BankAccountVerifiedAt = verificationResult?.IsVerified == true ? DateTime.UtcNow : null,
+                BankVerificationProvider = verificationResult?.Provider
             };
 
             await _userRepository.AddAsync(newUser);
@@ -55,13 +99,18 @@ namespace SB_Services.Implementations
                 UserId = newUser.Id,
                 Email = newUser.Email,
                 DisplayName = newUser.DisplayName,
-                AvatarUrl = newUser.AvatarUrl
+                AvatarUrl = newUser.AvatarUrl,
+                BankCode = newUser.BankCode,
+                BankAccountNo = newUser.BankAccountNo,
+                BankAccountName = newUser.BankAccountName,
+                BankAccountVerified = newUser.BankAccountVerified
             };
         }
 
         public async Task<AuthResponseDto> LoginAsync(LoginRequestDto request)
         {
-            var user = await _userRepository.GetByEmailAsync(request.Email);
+            var normalizedEmail = (request.Email ?? string.Empty).Trim().ToLower();
+            var user = await _userRepository.GetByEmailAsync(normalizedEmail);
             if (user == null || string.IsNullOrEmpty(user.PasswordHash))
             {
                 throw new UnauthorizedAccessException("Tài khoản hoặc mật khẩu không chính xác.");
@@ -83,7 +132,11 @@ namespace SB_Services.Implementations
                 UserId = user.Id,
                 Email = user.Email ?? string.Empty,
                 DisplayName = user.DisplayName,
-                AvatarUrl = user.AvatarUrl
+                AvatarUrl = user.AvatarUrl,
+                BankCode = user.BankCode,
+                BankAccountNo = user.BankAccountNo,
+                BankAccountName = user.BankAccountName,
+                BankAccountVerified = user.BankAccountVerified
             };
         }
 
@@ -114,6 +167,44 @@ namespace SB_Services.Implementations
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
+        }
+
+        private static void ValidateBankInfo(RegisterRequestDto request)
+        {
+            var hasBankCode = !string.IsNullOrWhiteSpace(request.BankCode);
+            var hasBankAccountNo = !string.IsNullOrWhiteSpace(request.BankAccountNo);
+            var hasBankAccountName = !string.IsNullOrWhiteSpace(request.BankAccountName);
+
+            if (!hasBankCode && !hasBankAccountNo && !hasBankAccountName)
+            {
+                return;
+            }
+
+            if (!(hasBankCode && hasBankAccountNo && hasBankAccountName))
+            {
+                throw new ArgumentException("Nếu khai báo thông tin ngân hàng, vui lòng nhập đầy đủ mã ngân hàng, số tài khoản và tên chủ tài khoản.");
+            }
+
+            if (!SupportedBankCodes.Contains(request.BankCode!))
+            {
+                throw new ArgumentException($"Mã ngân hàng '{request.BankCode}' chưa được hỗ trợ.");
+            }
+
+            if (!Regex.IsMatch(request.BankAccountNo!, @"^\d{6,20}$"))
+            {
+                throw new ArgumentException("Số tài khoản phải gồm 6 đến 20 chữ số.");
+            }
+
+            if (request.BankAccountName!.Length < 2)
+            {
+                throw new ArgumentException("Tên chủ tài khoản không hợp lệ.");
+            }
+        }
+
+        private static string? NormalizeNullable(string? value)
+        {
+            var normalized = (value ?? string.Empty).Trim();
+            return string.IsNullOrEmpty(normalized) ? null : normalized;
         }
     }
 }

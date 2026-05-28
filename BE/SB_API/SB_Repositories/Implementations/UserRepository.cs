@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using SB_BusinessObjects;
@@ -22,7 +23,14 @@ namespace SB_Repositories.Implementations
 
         public async Task<User?> GetByEmailAsync(string email)
         {
-            return await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            var normalizedEmail = (email ?? string.Empty).Trim().ToLower();
+            if (string.IsNullOrEmpty(normalizedEmail))
+            {
+                return null;
+            }
+
+            return await _context.Users.FirstOrDefaultAsync(u =>
+                u.Email != null && u.Email.Trim().ToLower() == normalizedEmail);
         }
 
         public async Task AddAsync(User user)
@@ -45,7 +53,14 @@ namespace SB_Repositories.Implementations
 
         public async Task<bool> ExistsByEmailAsync(string email)
         {
-            return await _context.Users.AnyAsync(u => u.Email == email);
+            var normalizedEmail = (email ?? string.Empty).Trim().ToLower();
+            if (string.IsNullOrEmpty(normalizedEmail))
+            {
+                return false;
+            }
+
+            return await _context.Users.AnyAsync(u =>
+                u.Email != null && u.Email.Trim().ToLower() == normalizedEmail);
         }
     }
 }

@@ -22,6 +22,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<ISettleTransactionRepository, SettleTransactionRepository>();
+builder.Services.AddScoped<IGroupInviteRepository, GroupInviteRepository>();
 
 // 2. Đăng ký Strategies cho Split Bill
 builder.Services.AddScoped<ISplitStrategy, EquallySplitStrategy>();
@@ -37,6 +38,8 @@ builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<ISettlementService, SettlementService>();
 builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHttpClient<IBankAccountVerificationService, BankAccountVerificationService>();
+builder.Services.AddHttpClient<IOcrService, GeminiOcrService>();
 
 // 4. Cấu hình JWT Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "VietQRSplitBillProSuperSecuritySecretKey2026";

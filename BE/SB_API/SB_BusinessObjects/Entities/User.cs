@@ -15,11 +15,15 @@ namespace SB_BusinessObjects.Entities
         public string? BankCode { get; set; }
         public string? BankAccountNo { get; set; }
         public string? BankAccountName { get; set; }
+        public bool BankAccountVerified { get; set; } = false;
+        public DateTime? BankAccountVerifiedAt { get; set; }
+        public string? BankVerificationProvider { get; set; }
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // Navigation Properties
         public virtual ICollection<Group> CreatedGroups { get; set; } = new List<Group>();
         public virtual ICollection<GroupMember> GroupMemberships { get; set; } = new List<GroupMember>();
+        public virtual ICollection<GroupInvite> CreatedGroupInvites { get; set; } = new List<GroupInvite>();
     }
 }

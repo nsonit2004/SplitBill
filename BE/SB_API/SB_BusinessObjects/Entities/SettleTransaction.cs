@@ -16,8 +16,10 @@ namespace SB_BusinessObjects.Entities
         
         // PaymentStatus: "Pending" | "Completed" | "Failed"
         public string PaymentStatus { get; set; } = "Pending";
+        public string? TransferReference { get; set; }
         
         public string? ProofImageUrl { get; set; }
+        public DateTime? BankVerifiedAt { get; set; }
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
