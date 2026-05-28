@@ -14,9 +14,9 @@
 
 # User Secrets / App Settings
 # appsettings.json should be committed as a template, but sensitive production keys should be loaded via Env Vars
-# appsettings.Development.json can contain local developer settings
-# appsettings.Production.json is ignored as it contains real production keys
+# appsettings.Development.json is ignored to protect local development secrets/passwords
 **/appsettings.Production.json
+**/appsettings.Development.json
 
 # === Frontend (React / Vite) ===
 # Dependency directories
