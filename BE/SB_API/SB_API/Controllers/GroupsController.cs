@@ -252,5 +252,30 @@ namespace SB_API.Controllers
                 return StatusCode(500, new { message = ex.Message });
             }
         }
+
+        [HttpGet("{groupId}/analytics")]
+        public async Task<IActionResult> GetGroupAnalytics(string groupId)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+                var result = await _groupService.GetGroupAnalyticsAsync(groupId, userId);
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(403, new { message = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = ex.Message });
+            }
+        }
     }
 }

@@ -37,6 +37,7 @@ namespace SB_Services.Implementations
                     Tax = 66600m, // 10% VAT
                     ServiceCharge = 20000m,
                     TotalAmount = 752600m,
+                    Category = "Food",
                     Items = new List<OcrLineItemDto>
                     {
                         new OcrLineItemDto { Name = "Buffet Lẩu Băng Chuyền", Quantity = 2, UnitPrice = 299000, TotalPrice = 598000 },
@@ -64,6 +65,7 @@ namespace SB_Services.Implementations
                         tax = new { type = "NUMBER", description = "Tiền thuế VAT" },
                         serviceCharge = new { type = "NUMBER", description = "Phí dịch vụ nếu có" },
                         totalAmount = new { type = "NUMBER", description = "Tổng tiền cần thanh toán của hóa đơn" },
+                        category = new { type = "STRING", description = "Danh mục chi tiêu phù hợp nhất. Chỉ được chọn một trong các giá trị sau: Food, Transport, Accommodation, Entertainment, Shopping, Other" },
                         items = new
                         {
                             type = "ARRAY",
@@ -81,7 +83,7 @@ namespace SB_Services.Implementations
                             }
                         }
                     },
-                    required = new[] { "merchantName", "totalAmount", "items" }
+                    required = new[] { "merchantName", "totalAmount", "category", "items" }
                 };
 
                 // 4. Chuẩn bị request payload cho Gemini API
@@ -93,7 +95,7 @@ namespace SB_Services.Implementations
                         {
                             parts = new object[]
                             {
-                                new { text = "Hãy trích xuất thông tin hóa đơn này. Đọc đúng tên món ăn tiếng Việt, số lượng, đơn giá và tổng tiền. Trả về đúng định dạng JSON được định nghĩa trong schema." },
+                                new { text = "Hãy trích xuất thông tin hóa đơn này. Đọc đúng tên món ăn tiếng Việt, số lượng, đơn giá và tổng tiền. Đồng thời tự động phân loại danh mục cho hóa đơn này (Food, Transport, Accommodation, Entertainment, Shopping, Other). Trả về đúng định dạng JSON được định nghĩa trong schema." },
                                 new
                                 {
                                     inlineData = new

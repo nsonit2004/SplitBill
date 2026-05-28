@@ -80,6 +80,7 @@ namespace SB_BusinessObjects
                 entity.Property(e => e.Description).IsRequired().HasMaxLength(250);
                 entity.Property(e => e.TotalAmount).HasPrecision(18, 2);
                 entity.Property(e => e.SplitMethod).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Category).HasMaxLength(50).HasDefaultValue("Other");
 
                 // Quan hệ Expense - Group (Cascade delete)
                 entity.HasOne(e => e.Group)

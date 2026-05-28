@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import Layout from '../components/Layout';
 import ExpenseModal from '../components/ExpenseModal';
+import ExpenseDetailModal from '../components/ExpenseDetailModal';
 import SettleModal from '../components/SettleModal';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -19,7 +20,9 @@ import {
   CheckCircle, 
   Clock, 
   Image as ImageIcon,
-  X
+  X,
+  BarChart2,
+  TrendingUp
 } from 'lucide-react';
 
 interface GroupMember {
@@ -110,10 +113,22 @@ const GroupDetailPage: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'expenses' | 'settlements' | 'history'>('expenses');
+  const [activeTab, setActiveTab] = useState<'expenses' | 'settlements' | 'history' | 'analytics'>('expenses');
+
+  // Analytics State
+  const [analytics, setAnalytics] = useState<{
+    totalSpending: number;
+    totalExpenses: number;
+    categoryBreakdown: Array<{ category: string; amount: number; count: number; percentage: number }>;
+    topSpenders: Array<{ memberId: string; nickname: string; amountOwed: number }>;
+  } | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
 
   // Modals
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isExpenseDetailOpen, setIsExpenseDetailOpen] = useState(false);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(null);
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<SimplifiedDebt | null>(null);
 
@@ -201,9 +216,28 @@ const GroupDetailPage: React.FC = () => {
     }
   };
 
+  const fetchAnalytics = async () => {
+    if (!groupId) return;
+    setAnalyticsLoading(true);
+    try {
+      const res = await api.get(`/groups/${groupId}/analytics`);
+      setAnalytics(res.data);
+    } catch {
+      // ignore analytics errors silently
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchGroupDetails();
   }, [groupId]);
+
+  useEffect(() => {
+    if (activeTab === 'analytics') {
+      fetchAnalytics();
+    }
+  }, [activeTab, groupId]);
 
   useEffect(() => {
     if (!groupId) return;
@@ -556,6 +590,18 @@ const GroupDetailPage: React.FC = () => {
                   <History size={16} />
                   <span>Lịch sử ({historyTransactions.length})</span>
                 </button>
+
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className={`flex-1 flex items-center justify-center space-x-2 py-3 rounded-xl text-xs font-bold transition-all ${
+                    activeTab === 'analytics'
+                      ? 'bg-indigo-600/10 text-indigo-400 border border-indigo-500/20'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <BarChart2 size={16} />
+                  <span>Phân tích</span>
+                </button>
               </div>
 
               {/* Tab 1: Expenses View */}
@@ -586,7 +632,22 @@ const GroupDetailPage: React.FC = () => {
                           year: 'numeric'
                         });
                         return (
-                          <div key={expense.id} className="p-5 rounded-2xl bg-slate-950/20 border border-white/5 flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0 group relative">
+                          <div
+                            key={expense.id}
+                            className="p-5 rounded-2xl bg-slate-950/20 border border-white/5 flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0 group relative cursor-pointer hover:border-indigo-500/20 hover:bg-slate-950/30 transition-colors"
+                            onClick={() => {
+                              setSelectedExpenseId(expense.id);
+                              setIsExpenseDetailOpen(true);
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                setSelectedExpenseId(expense.id);
+                                setIsExpenseDetailOpen(true);
+                              }
+                            }}
+                          >
                             <div className="space-y-1">
                               <h3 className="font-bold text-sm text-white">{expense.description}</h3>
                               <p className="text-[11px] text-slate-500">
@@ -604,6 +665,7 @@ const GroupDetailPage: React.FC = () => {
                                     href={expense.imageUrl} 
                                     target="_blank" 
                                     rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
                                     className="text-[9px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-full font-medium flex items-center space-x-1 hover:bg-indigo-500/20"
                                   >
                                     <ImageIcon size={10} />
@@ -616,7 +678,10 @@ const GroupDetailPage: React.FC = () => {
                             <div className="flex items-center space-x-4">
                               <span className="text-base font-extrabold text-white">{formatCurrency(expense.totalAmount)}</span>
                               <button
-                                onClick={() => handleDeleteExpense(expense.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteExpense(expense.id);
+                                }}
                                 className="p-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors md:opacity-0 group-hover:opacity-100"
                                 title="Xóa hóa đơn"
                               >
@@ -707,8 +772,6 @@ const GroupDetailPage: React.FC = () => {
                   ) : (
                     <div className="space-y-4">
                       {historyTransactions.map((tx) => {
-                        // Xác định xem user có phải người nhận (creditor) của tx này không
-                        // Đối sánh dựa trên nickname của member liên kết
                         const isReceiver = members.find(m => m.id === tx.creditorId)?.userId === user?.userId;
 
                         return (
@@ -781,6 +844,208 @@ const GroupDetailPage: React.FC = () => {
                   )}
                 </div>
               )}
+
+              {/* Tab 4: Analytics View */}
+              {activeTab === 'analytics' && (() => {
+                const CATEGORY_COLORS: Record<string, { fill: string; text: string; bg: string }> = {
+                  Food:          { fill: '#6366f1', text: 'text-indigo-400',  bg: 'bg-indigo-500/10' },
+                  Transport:     { fill: '#22d3ee', text: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
+                  Accommodation: { fill: '#a78bfa', text: 'text-violet-400',  bg: 'bg-violet-500/10' },
+                  Entertainment: { fill: '#fb923c', text: 'text-orange-400',  bg: 'bg-orange-500/10' },
+                  Shopping:      { fill: '#34d399', text: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+                  Other:         { fill: '#94a3b8', text: 'text-slate-400',   bg: 'bg-slate-500/10' },
+                };
+                const CATEGORY_ICONS: Record<string, string> = {
+                  Food: '🍜', Transport: '🚗', Accommodation: '🏨',
+                  Entertainment: '🎉', Shopping: '🛍️', Other: '📦',
+                };
+
+                // Build SVG Donut Chart
+                const buildDonut = (items: Array<{ category: string; amount: number; percentage: number }>) => {
+                  if (!items || items.length === 0) return null;
+                  const R = 70; const cx = 90; const cy = 90;
+                  const circumference = 2 * Math.PI * R;
+                  let accumulated = 0;
+                  const segments = items.map((item) => {
+                    const offset = circumference - (item.percentage / 100) * circumference;
+                    const rotation = (accumulated / 100) * 360 - 90;
+                    accumulated += item.percentage;
+                    return { ...item, offset, rotation };
+                  });
+                  return (
+                    <svg viewBox="0 0 180 180" className="w-full h-full drop-shadow-2xl">
+                      <defs>
+                        <filter id="glow">
+                          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                          <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                        </filter>
+                      </defs>
+                      {/* Background ring */}
+                      <circle cx={cx} cy={cy} r={R} fill="none" stroke="#1e293b" strokeWidth="28" />
+                      {segments.map((seg, i) => {
+                        const isHovered = hoveredCategory === seg.category;
+                        return (
+                          <circle
+                            key={i}
+                            cx={cx} cy={cy} r={R}
+                            fill="none"
+                            stroke={CATEGORY_COLORS[seg.category]?.fill || '#94a3b8'}
+                            strokeWidth={isHovered ? 32 : 26}
+                            strokeDasharray={`${circumference} ${circumference}`}
+                            strokeDashoffset={seg.offset}
+                            strokeLinecap="round"
+                            transform={`rotate(${seg.rotation}, ${cx}, ${cy})`}
+                            style={{ transition: 'stroke-width 0.25s ease, filter 0.25s ease', cursor: 'pointer', filter: isHovered ? 'url(#glow)' : 'none', opacity: hoveredCategory && !isHovered ? 0.4 : 1 }}
+                            onMouseEnter={() => setHoveredCategory(seg.category)}
+                            onMouseLeave={() => setHoveredCategory(null)}
+                          />
+                        );
+                      })}
+                      {/* Center text */}
+                      {hoveredCategory ? (
+                        <>
+                          <text x={cx} y={cy - 10} textAnchor="middle" fill="white" fontSize="11" fontWeight="700">
+                            {CATEGORY_ICONS[hoveredCategory] || '📦'} {hoveredCategory}
+                          </text>
+                          <text x={cx} y={cy + 8} textAnchor="middle" fill="#a5b4fc" fontSize="13" fontWeight="800">
+                            {(segments.find(s => s.category === hoveredCategory)?.percentage || 0).toFixed(1)}%
+                          </text>
+                        </>
+                      ) : (
+                        <>
+                          <text x={cx} y={cy - 8} textAnchor="middle" fill="#94a3b8" fontSize="9" fontWeight="500">Tổng chi tiêu</text>
+                          <text x={cx} y={cy + 10} textAnchor="middle" fill="white" fontSize="10" fontWeight="800">
+                            {analytics ? (analytics.totalSpending / 1000).toFixed(0) + 'K' : '—'}
+                          </text>
+                        </>
+                      )}
+                    </svg>
+                  );
+                };
+
+                return (
+                  <div className="space-y-6">
+                    {analyticsLoading ? (
+                      <div className="p-12 rounded-3xl bg-slate-900/40 border border-white/5 flex items-center justify-center">
+                        <div className="inline-block w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mr-3" />
+                        <span className="text-slate-400 text-sm">Đang tải phân tích...</span>
+                      </div>
+                    ) : !analytics || analytics.totalExpenses === 0 ? (
+                      <div className="p-12 rounded-3xl bg-slate-900/40 border border-white/5 text-center">
+                        <BarChart2 size={48} className="text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-400 text-sm">Chưa có dữ liệu chi tiêu để phân tích.</p>
+                        <p className="text-slate-500 text-xs mt-1">Thêm hóa đơn đầu tiên để xem biểu đồ phân tích.</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Summary Cards */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-600/10 to-indigo-900/20 border border-indigo-500/20">
+                            <p className="text-[10px] text-indigo-400 font-semibold uppercase tracking-wider mb-1">Tổng chi tiêu nhóm</p>
+                            <p className="text-2xl font-extrabold text-white">{formatCurrency(analytics.totalSpending)}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">từ {analytics.totalExpenses} hóa đơn</p>
+                          </div>
+                          <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-600/10 to-emerald-900/20 border border-emerald-500/20">
+                            <p className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wider mb-1">Trung bình/hóa đơn</p>
+                            <p className="text-2xl font-extrabold text-white">
+                              {formatCurrency(analytics.totalExpenses > 0 ? analytics.totalSpending / analytics.totalExpenses : 0)}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-1">mỗi lần chi tiêu</p>
+                          </div>
+                        </div>
+
+                        {/* Donut Chart + Category Breakdown */}
+                        <div className="p-6 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-xl">
+                          <div className="flex items-center space-x-2 mb-5">
+                            <TrendingUp size={16} className="text-indigo-400" />
+                            <h3 className="text-sm font-bold text-white">Phân tích danh mục chi tiêu</h3>
+                          </div>
+                          <div className="flex flex-col md:flex-row gap-6 items-center">
+                            {/* SVG Donut */}
+                            <div className="w-44 h-44 flex-shrink-0 relative">
+                              {buildDonut(analytics.categoryBreakdown)}
+                            </div>
+
+                            {/* Legend & Breakdown */}
+                            <div className="flex-1 space-y-2.5 w-full">
+                              {analytics.categoryBreakdown.map((cat) => {
+                                const colors = CATEGORY_COLORS[cat.category] || CATEGORY_COLORS['Other'];
+                                const isHov = hoveredCategory === cat.category;
+                                return (
+                                  <div
+                                    key={cat.category}
+                                    className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${
+                                      isHov
+                                        ? `${colors.bg} border-current/30`
+                                        : 'bg-slate-950/30 border-white/5 hover:bg-slate-900/60'
+                                    }`}
+                                    onMouseEnter={() => setHoveredCategory(cat.category)}
+                                    onMouseLeave={() => setHoveredCategory(null)}
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <span className="text-base">{CATEGORY_ICONS[cat.category] || '📦'}</span>
+                                      <div>
+                                        <p className={`text-xs font-semibold ${isHov ? colors.text : 'text-slate-300'}`}>{cat.category}</p>
+                                        <p className="text-[10px] text-slate-500">{cat.count} hóa đơn</p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-xs font-bold text-white">{formatCurrency(cat.amount)}</p>
+                                      <div className="flex items-center space-x-1 justify-end mt-1">
+                                        <div className="h-1 rounded-full" style={{ width: `${Math.max(cat.percentage, 4)}px`, backgroundColor: CATEGORY_COLORS[cat.category]?.fill || '#94a3b8' }} />
+                                        <span className={`text-[10px] font-bold ${colors.text}`}>{cat.percentage.toFixed(1)}%</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Top Spenders */}
+                        {analytics.topSpenders.length > 0 && (
+                          <div className="p-6 rounded-3xl bg-slate-900/40 border border-white/5 backdrop-blur-xl">
+                            <div className="flex items-center space-x-2 mb-5">
+                              <TrendingUp size={16} className="text-orange-400" />
+                              <h3 className="text-sm font-bold text-white">Bảng xếp hạng chi tiêu</h3>
+                            </div>
+                            <div className="space-y-3">
+                              {analytics.topSpenders.map((spender, idx) => {
+                                const maxAmount = analytics.topSpenders[0]?.amountOwed || 1;
+                                const barWidth = (spender.amountOwed / maxAmount) * 100;
+                                const medals = ['🥇', '🥈', '🥉'];
+                                return (
+                                  <div key={spender.memberId} className="flex items-center space-x-3">
+                                    <span className="text-base w-6 text-center flex-shrink-0">
+                                      {medals[idx] || `#${idx + 1}`}
+                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex justify-between items-center mb-1">
+                                        <span className="text-xs font-semibold text-slate-300 truncate">{spender.nickname}</span>
+                                        <span className="text-xs font-bold text-white ml-2">{formatCurrency(spender.amountOwed)}</span>
+                                      </div>
+                                      <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                        <div
+                                          className="h-full rounded-full transition-all duration-700"
+                                          style={{
+                                            width: `${barWidth}%`,
+                                            background: idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#c2763f' : '#6366f1'
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </>
@@ -860,6 +1125,15 @@ const GroupDetailPage: React.FC = () => {
           groupId={groupId || ''}
           members={members}
           onSuccess={fetchGroupDetails}
+        />
+
+        <ExpenseDetailModal
+          isOpen={isExpenseDetailOpen}
+          onClose={() => {
+            setIsExpenseDetailOpen(false);
+            setSelectedExpenseId(null);
+          }}
+          expenseId={selectedExpenseId}
         />
 
         {/* Settle Modal (Dynamic VietQR) */}

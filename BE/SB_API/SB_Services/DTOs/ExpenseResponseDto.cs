@@ -11,6 +11,7 @@ namespace SB_Services.DTOs
         public decimal TotalAmount { get; set; }
         public string SplitMethod { get; set; } = "Equally";
         public string? ImageUrl { get; set; }
+        public string Category { get; set; } = "Other";
         public string? CreatedById { get; set; }
         public DateTime CreatedAt { get; set; }
 

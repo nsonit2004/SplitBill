@@ -379,7 +379,61 @@ namespace SB_Services.Implementations
             await _groupRepository.RemoveMemberAsync(member);
         }
 
+        public async Task<GroupAnalyticsDto> GetGroupAnalyticsAsync(string groupId, string requesterUserId)
+        {
+            var group = await _groupRepository.GetByIdWithMembersAsync(groupId);
+            if (group == null)
+            {
+                throw new KeyNotFoundException("Không tìm thấy nhóm chi tiêu.");
+            }
+            if (!group.Members.Any(m => m.UserId == requesterUserId))
+            {
+                throw new UnauthorizedAccessException("Bạn không có quyền truy cập dữ liệu nhóm này.");
+            }
+
+            var expenses = await _expenseRepository.GetExpensesByGroupIdAsync(groupId);
+            var expenseList = expenses.ToList();
+
+            var totalSpending = expenseList.Sum(e => e.TotalAmount);
+
+            // Category Breakdown
+            var categoryGroups = expenseList
+                .GroupBy(e => e.Category ?? "Other")
+                .Select(g => new CategoryBreakdownDto
+                {
+                    Category = g.Key,
+                    Amount = g.Sum(e => e.TotalAmount),
+                    Count = g.Count(),
+                    Percentage = totalSpending > 0 ? Math.Round((double)(g.Sum(e => e.TotalAmount) / totalSpending * 100), 1) : 0
+                })
+                .OrderByDescending(c => c.Amount)
+                .ToList();
+
+            // Top Spenders (by amount owed in expense slices)
+            var memberDict = group.Members.ToDictionary(m => m.Id, m => m.Nickname);
+            var memberSpending = expenseList
+                .SelectMany(e => e.Slices)
+                .GroupBy(s => s.MemberId)
+                .Select(g => new MemberSpendingDto
+                {
+                    MemberId = g.Key,
+                    Nickname = memberDict.TryGetValue(g.Key, out var nick) ? nick : "Không rõ",
+                    AmountOwed = g.Sum(s => s.AmountOwed)
+                })
+                .OrderByDescending(m => m.AmountOwed)
+                .ToList();
+
+            return new GroupAnalyticsDto
+            {
+                TotalSpending = totalSpending,
+                TotalExpenses = expenseList.Count,
+                CategoryBreakdown = categoryGroups,
+                TopSpenders = memberSpending
+            };
+        }
+
         private async Task<GroupDetailResponseDto> MapToDetailDtoWithStatsAsync(Group group, string? currentUserId = null)
+
         {
             var dto = new GroupDetailResponseDto
             {

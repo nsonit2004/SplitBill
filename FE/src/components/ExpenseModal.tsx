@@ -48,6 +48,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({
     tax: number;
     serviceCharge: number;
     totalAmount: number;
+    category?: string;
     items: Array<{ name: string; quantity: number; unitPrice: number; totalPrice: number }>;
   } | null>(null);
   const [ocrMerchantName, setOcrMerchantName] = useState('');
@@ -55,6 +56,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({
   const [ocrTax, setOcrTax] = useState(0);
   const [ocrServiceCharge, setOcrServiceCharge] = useState(0);
   const [ocrPayer, setOcrPayer] = useState('');
+  const [category, setCategory] = useState('Other');
   const [feeSplitMethod, setFeeSplitMethod] = useState<'Equally' | 'Proportionally'>('Equally');
   const [selectedItemConsumers, setSelectedItemConsumers] = useState<Record<number, string[]>>({});
 
@@ -143,6 +145,9 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({
 
     const shares = calculateMemberShares();
     setDescription(`${ocrMerchantName} (${ocrDate})`);
+    if (ocrResult.category) {
+      setCategory(ocrResult.category);
+    }
     
     const calculatedTotal = Object.values(shares).reduce((sum, s) => sum + s.total, 0);
     setTotalAmount(Math.round(calculatedTotal));
@@ -544,6 +549,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({
         description,
         totalAmount,
         splitMethod,
+        category,
         imageUrl: imageUrl || null,
         payers: payersPayload,
         slices: slicesPayload
@@ -612,7 +618,7 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({
             </label>
           </div>
 
-          {/* Mô tả & Số tiền */}
+          {/* Mô tả, Danh mục & Số tiền */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t('common.description')}</label>
@@ -637,6 +643,34 @@ const ExpenseModal: React.FC<ExpenseModalProps> = ({
                 onChange={(e) => setTotalAmount(parseFloat(e.target.value) || 0)}
                 className="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/5 focus:border-indigo-500 focus:outline-none text-sm text-white font-bold"
               />
+            </div>
+          </div>
+
+          {/* Danh mục chi tiêu */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Danh mục chi tiêu</label>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {([
+                { value: 'Food', label: '🍜 Ăn uống' },
+                { value: 'Transport', label: '🚗 Di chuyển' },
+                { value: 'Accommodation', label: '🏨 Lưu trú' },
+                { value: 'Entertainment', label: '🎉 Giải trí' },
+                { value: 'Shopping', label: '🛍️ Mua sắm' },
+                { value: 'Other', label: '📦 Khác' },
+              ] as const).map((cat) => (
+                <button
+                  key={cat.value}
+                  type="button"
+                  onClick={() => setCategory(cat.value)}
+                  className={`py-2 px-2 rounded-xl border text-[10px] font-semibold transition-all text-center ${
+                    category === cat.value
+                      ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300'
+                      : 'bg-slate-900 border-white/5 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
             </div>
           </div>
 

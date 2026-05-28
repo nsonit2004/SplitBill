@@ -14,6 +14,9 @@ namespace SB_BusinessObjects.Entities
         // SplitMethod: "Equally" | "Amount" | "Exclude" | "Shares"
         public string SplitMethod { get; set; } = "Equally";
         
+        // Category: "Food" | "Transport" | "Accommodation" | "Entertainment" | "Shopping" | "Other"
+        public string? Category { get; set; } = "Other";
+        
         public string? CreatedById { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
